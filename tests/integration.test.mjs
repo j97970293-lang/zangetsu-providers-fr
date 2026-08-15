@@ -22,11 +22,22 @@ test('manifest providers report French metadata', async () => {
   }
 });
 
-test('all providers expose popular for the Zangetsu home screen', async () => {
+test('all providers expose popular and getHome for the Zangetsu home screen', async () => {
   for (const id of ['frenchstream', 'french-manga', 'movix']) {
     const rows = await call(id, 'popular', [{ dateRange: 7 }]);
     assert.ok(Array.isArray(rows), `${id}.popular did not return an array`);
+    const home = await call(id, 'getHome', [{ category: 'sub' }]);
+    assert.ok(Array.isArray(home), `${id}.getHome did not return an array`);
+    assert.ok(home.length > 0 && Array.isArray(home[0].items), `${id}.getHome returned no valid section`);
   }
+});
+
+test('French-Manga resolves a real HLS source from an episode', async () => {
+  const detail = await call('french-manga', 'getDetail', ['https://w16.french-manga.net/1498700-one-piece-saison-23-1999.html']);
+  const episode = detail.episodes.find((e) => e.lang === 'vostfr' && e.number === 2);
+  assert.ok(episode, 'French-Manga test episode was not found');
+  const sources = await call('french-manga', 'getVideoSources', [episode.id]);
+  assert.ok(sources.some((s) => typeof s.url === 'string' && /\.m3u8(?:\?|$)/i.test(s.url)), 'French-Manga returned no HLS source');
 });
 
 test('French-Stream search and movie detail are live', async () => {
