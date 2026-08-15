@@ -16,10 +16,10 @@ function request(path, opts) {
 }
 function cards(h) {
   var out = [], re = /<a\b[^>]*class=["'][^"']*short-poster[^"']*["'][^>]*href=["']([^"']+)["'][^>]*?(?:alt|title)=["']([^"']*)["'][^>]*>/gi, m;
-  while ((m = re.exec(h || ''))) { var chunk = String(h).slice(m.index, m.index + 1700), im = chunk.match(/<img\b[^>]*(?:data-src|src)=["']([^"']+)["']/i), t = clean(m[2]).trim(); if (!t) continue; var u = abs(m[1].replace(/&amp;/g, '&'), SITE), series = /saison|series|s-tv/i.test(t + ' ' + u); out.push({ id: idOf(u) || u, title: t, url: u, cover: im ? abs(im[1], SITE) : '', type: series ? 'tv' : 'movie', sourceId: SOURCE_ID }); }
+  while ((m = re.exec(h || ''))) { var chunk = String(h).slice(m.index, m.index + 1700), im = chunk.match(/<img\b[^>]*(?:data-src|src)=["']([^"']+)["']/i), t = clean(m[2]).trim(); if (!t) continue; var u = abs(m[1].replace(/&amp;/g, '&'), SITE), series = /saison|series|s-tv/i.test(t + ' ' + u); out.push({ id: idOf(u) || u, title: t, url: u, cover: im ? abs(im[1], SITE) : '', type: 'movie', sourceId: SOURCE_ID }); }
   var seen = {}; return out.filter(function (x) { if (seen[x.url]) return false; seen[x.url] = 1; return true; });
 }
-function getInfo() { return { name: 'French-Stream', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'movie', version: '1.0.4' }; }
+function getInfo() { return { name: 'French-Stream', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'movie', version: '1.0.5' }; }
 function search(query, page, opts) { if (!String(query || '').trim()) return Promise.resolve([]); return request('/index.php?do=search&subaction=search&story=' + enc(query), {}).then(function (r) { return r ? cards(body(r)) : []; }); }
 function popular(opts) { var q = ['film', 'série', 'action']; return search(q[(opts && opts.dateRange || 0) % q.length], 1, opts); }
 function getHome(opts) { return popular({ dateRange: 1 }).then(function (items) { return [{ title: 'Tendances francophones', items: items || [] }]; }); }
@@ -34,7 +34,7 @@ function episodeData(data, url, title) {
   return out.sort(function (a, b) { return a.number - b.number || a.lang.localeCompare(b.lang); });
 }
 function getDetail(url) {
-  return request(url, {}).then(function (r) { if (!r) return null; var h = body(r), d = metadata(h, url), id = idOf(url), series = /episodes-wrapper|serie-config|saison\s*\d+/i.test(h + ' ' + d.title), endpoint = series ? '/ep-data.php?id=' + enc(id) + '&format=js' : '/engine/ajax/film_api.php?id=' + enc(id); return request(endpoint, {}).then(function (er) { var p = er ? json(er) : null, eps = series && p ? episodeData(p, url, d.title) : []; if (!series) { var links = []; function walk(v) { if (!v) return; if (typeof v === 'string' && /^https?:\/\//i.test(v)) links.push(v); else if (typeof v === 'object') Object.keys(v).forEach(function (k) { walk(v[k]); }); } walk(p && p.players); eps = [{ id: url + '|movie', number: 1, season: 1, title: 'Film', url: url, sourceId: SOURCE_ID, links: uniq(links) }]; } return { id: id || url, title: d.title, url: url, cover: d.cover, description: d.description, year: d.year, genres: d.genres, type: series ? 'tv' : 'movie', sourceId: SOURCE_ID, episodes: eps }; }); });
+  return request(url, {}).then(function (r) { if (!r) return null; var h = body(r), d = metadata(h, url), id = idOf(url), series = /episodes-wrapper|serie-config|saison\s*\d+/i.test(h + ' ' + d.title), endpoint = series ? '/ep-data.php?id=' + enc(id) + '&format=js' : '/engine/ajax/film_api.php?id=' + enc(id); return request(endpoint, {}).then(function (er) { var p = er ? json(er) : null, eps = series && p ? episodeData(p, url, d.title) : []; if (!series) { var links = []; function walk(v) { if (!v) return; if (typeof v === 'string' && /^https?:\/\//i.test(v)) links.push(v); else if (typeof v === 'object') Object.keys(v).forEach(function (k) { walk(v[k]); }); } walk(p && p.players); eps = [{ id: url + '|movie', number: 1, season: 1, title: 'Film', url: url, sourceId: SOURCE_ID, links: uniq(links) }]; } return { id: id || url, title: d.title, url: url, cover: d.cover, description: d.description, year: d.year, genres: d.genres, type: 'movie', sourceId: SOURCE_ID, episodes: eps }; }); });
 }
 function getEpisodes(url) { return getDetail(url).then(function (x) { return x ? x.episodes || [] : []; }); }
 function getVideoSources(episodeUrl) {
