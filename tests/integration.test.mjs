@@ -22,6 +22,13 @@ test('manifest providers report French metadata', async () => {
   }
 });
 
+test('all providers expose popular for the Zangetsu home screen', async () => {
+  for (const id of ['frenchstream', 'french-manga', 'movix']) {
+    const rows = await call(id, 'popular', [{ dateRange: 7 }]);
+    assert.ok(Array.isArray(rows), `${id}.popular did not return an array`);
+  }
+});
+
 test('French-Stream search and movie detail are live', async () => {
   const rows = await call('frenchstream', 'search', ['reacher', 1, {}]);
   assert.ok(rows.length > 0, 'French-Stream search returned no results');

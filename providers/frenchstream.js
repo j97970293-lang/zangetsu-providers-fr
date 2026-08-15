@@ -19,8 +19,9 @@ function cards(h) {
   while ((m = re.exec(h || ''))) { var chunk = String(h).slice(m.index, m.index + 1700), im = chunk.match(/<img\b[^>]*(?:data-src|src)=["']([^"']+)["']/i), t = clean(m[2]).trim(); if (!t) continue; var u = abs(m[1].replace(/&amp;/g, '&'), SITE), series = /saison|series|s-tv/i.test(t + ' ' + u); out.push({ id: idOf(u) || u, title: t, url: u, cover: im ? abs(im[1], SITE) : '', type: series ? 'tv' : 'movie', sourceId: SOURCE_ID }); }
   var seen = {}; return out.filter(function (x) { if (seen[x.url]) return false; seen[x.url] = 1; return true; });
 }
-function getInfo() { return { name: 'French-Stream', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'movie', version: '1.0.0' }; }
+function getInfo() { return { name: 'French-Stream', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'movie', version: '1.0.1' }; }
 function search(query, page, opts) { if (!String(query || '').trim()) return Promise.resolve([]); return request('/index.php?do=search&subaction=search&story=' + enc(query), {}).then(function (r) { return r ? cards(body(r)) : []; }); }
+function popular(opts) { var q = ['film', 'série', 'action']; return search(q[(opts && opts.dateRange || 0) % q.length], 1, opts); }
 function metadata(h, url) {
   var tm = h.match(/<h1[^>]*id=["']s-title["'][^>]*>([\s\S]*?)<\/h1>/i) || h.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || h.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i), im = h.match(/<div[^>]*class=["'][^"']*fposter[^"']*["'][\s\S]*?<img[^>]+(?:src|data-src)=["']([^"']+)/i) || h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i), dm = h.match(/<div[^>]*class=["'][^"']*fdesc[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) || h.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i), y = (h.match(/(?:19|20)\d{2}/) || [])[0];
   var gs = [], gm, gr = /class=["'][^"']*(?:genre|tag)[^"']*["'][^>]*>([\s\S]*?)<\//gi; while ((gm = gr.exec(h))) gs.push(clean(gm[1]).trim());
