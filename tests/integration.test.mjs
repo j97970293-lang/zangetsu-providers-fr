@@ -35,6 +35,7 @@ test('French-Stream search and movie detail are live', async () => {
   assert.ok(rows[0].url && rows[0].title);
   const detail = await call('frenchstream', 'getDetail', ['https://french-stream.one/index.php?newsid=15134151']);
   assert.equal(detail.type, 'movie');
+  assert.ok(detail.year === undefined || typeof detail.year === 'string');
   assert.ok(detail.episodes && detail.episodes.length === 1);
   assert.ok(detail.episodes[0].id.includes('|movie'));
 });
@@ -44,6 +45,7 @@ test('French-Manga search and episode API are live', async () => {
   assert.ok(rows.length > 0, 'French-Manga search returned no results');
   const detail = await call('french-manga', 'getDetail', ['https://w16.french-manga.net/index.php?newsid=1498810']);
   assert.equal(detail.sourceId, 'french-manga');
+  assert.ok(detail.year === undefined || typeof detail.year === 'string');
   assert.ok(detail.episodes.length > 0, 'French-Manga episode API returned no episodes');
   assert.ok(detail.episodes.some((e) => e.lang === 'vostfr'));
 });
@@ -53,6 +55,7 @@ test('Movix search and TMDB detail are live', async () => {
   assert.ok(rows.length > 0, 'Movix/TMDB search returned no results');
   const detail = await call('movix', 'getDetail', ['movix://movie/693134']);
   assert.equal(detail.type, 'movie');
+  assert.ok(detail.year === undefined || typeof detail.year === 'string');
   assert.ok(detail.tmdbId === undefined || detail.title);
   assert.ok(detail.episodes.length === 1);
 });

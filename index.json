@@ -2,8 +2,8 @@
   "name": "Zangetsu Providers FR",
   "description": "Providers francophones pour Zangetsu : French-Stream, French-Manga et Movix, avec leurs serveurs vidéo.",
   "sources": [
-    {"id":"frenchstream","name":"French-Stream","version":"1.0.1","type":"movie","lang":"fr","file":"providers/frenchstream.js","nsfw":false},
-    {"id":"french-manga","name":"French-Manga","version":"1.0.1","type":"anime","lang":"fr","file":"providers/french-manga.js","nsfw":false},
-    {"id":"movix","name":"Movix","version":"1.0.1","type":"movie","lang":"fr","file":"providers/movix.js","nsfw":false}
+    {"id":"frenchstream","name":"French-Stream","version":"1.0.2","type":"movie","lang":"fr","file":"providers/frenchstream.js","nsfw":false},
+    {"id":"french-manga","name":"French-Manga","version":"1.0.2","type":"anime","lang":"fr","file":"providers/french-manga.js","nsfw":false},
+    {"id":"movix","name":"Movix","version":"1.0.2","type":"movie","lang":"fr","file":"providers/movix.js","nsfw":false}
   ]
 }
