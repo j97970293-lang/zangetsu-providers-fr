@@ -34,3 +34,36 @@ Sources externes et code consulté : [Zangetsu Episode model](https://github.com
 - Après correction, `getHome()` de French-Stream et Movix renvoie des sections non vides. Movix et French-Stream utilisent désormais `type: "movie"` pour satisfaire l’énumération ProviderType de Zangetsu, et les années sont des chaînes.
 - Suite d’intégration : 7 tests réussis sur 7 avant la vérification ciblée Naruto ; le diagnostic ciblé confirme toutefois `sources=[]` pour Naruto à cause de l’indisponibilité des hôtes ci-dessus.
 - Référence publique utilisée pour la logique générique : provider VoirAnime de `gowaru-nuvio-providers`, qui classe `vidhsareup` dans le résolveur générique et filtre aussi `/troll/master.m3u8`.
+
+
+## Diagnostic de résolution multi-provider — 2026-08-16
+
+- Zangetsu mobile charge seulement quatre extracteurs intégrés (Doodstream, Mp4upload, OK.ru et Streamlare). Les fichiers `extractors/*.js` présents dans ce dépôt ne sont pas automatiquement chargés par l’application ; un provider doit donc résoudre directement les hôtes supplémentaires.
+- French-Manga One Piece `https://w16.french-manga.net/1498700-one-piece-saison-23-1999.html` retourne des liens Vidzy et Luluvdo ; Luluvdo produit un flux HLS réel.
+- French-Manga Naruto THE LAST `https://w16.french-manga.net/1498754-naruto-the-last-le-film-saison-1-2014.html` retourne Vidzy et VidShareUp. Les deux résolutions testées retournent actuellement zéro source ; Vidzy renvoie un flux de démonstration `/troll/master.m3u8` filtré et VidShareUp ne fournit pas de flux exploitable.
+- French-Stream retourne actuellement des embeds `fsvid.lol`, `vidzy.cc`, `uqload.is` et `kakaflix.lol`; les extracteurs du dépôt ne sont pas suffisants dans l’application mobile. Les embeds testés pour le film courant renvoient un flux de démonstration ou une réponse 403.
+- Movix API `https://api.movix.fun/api/fstream/movie/693134`, `/api/links/movie/693134`, `/api/wiflix/movie/693134` et les routes TV répondent en HTTP 200 et retournent des embeds, notamment Fsvid, Vidzy, Uqload, Kakaflix, Bysebuho et Embedseek. `getVideoSources` retournait zéro car il déléguait tous ces hôtes à `extractVideo`, alors que l’application ne les enregistre pas.
+- Les providers French-Stream et Movix doivent intégrer des résolveurs directs pour Fsvid/Vidzy/Uqload et filtrer les faux flux ; les hôtes premium, 403 ou réellement hors service ne peuvent pas produire de source sans flux public valide.
+
+
+### Structure exacte API Movix Dune
+
+La réponse `https://api.movix.fun/api/fstream/movie/693134` contient `players` sous forme de groupes de langue (`VFQ`, `VFF`, `VOSTFR`, `Default`), chacun étant un tableau d’objets `{url,type,quality,player}`. Les URLs observées incluent `fsvid.lol`, `vidzy.cc`, `uqload.is`, `kakaflix.lol`, `mixdrop.ag` et plusieurs chemins `newPlayer.php`. La collecte actuelle de Movix parcourt les clés des objets mais ne descend pas correctement dans les tableaux, ce qui explique `links=[]` dans le diagnostic même lorsque l’API renvoie 17 lecteurs.
+
+
+## Validation v1.0.6 — 2026-08-16
+
+Le décompacteur Uqload a été validé sur un lecteur `eval(function(p,a,c,k,e,d){...})` à base 36 : il récupère bien le flux `master.m3u8` réel après expansion du dictionnaire. Le motif initial exigeait deux antislashs et ne correspondait pas au HTML ; il a été corrigé dans les trois providers.
+
+Les tests ciblés dans le harness du runtime Zangetsu ont ensuite produit les résultats suivants :
+
+| Provider et titre | Serveurs résolus | Résultat |
+|---|---|---|
+| French-Stream — Dune : Deuxième partie | Uqload | 2 sources HLS |
+| French-Manga — One Piece, épisode 1 | Luluvdo | 1 source HLS |
+| Movix — Dune : Deuxième partie | Uqload et Luluvdo | 4 sources HLS |
+| Movix — The Last of Us, épisode 1 | Uqload | 12 sources HLS |
+
+Le parser Movix descend désormais dans les tableaux et objets de `players`, puis les URLs Kakaflix, Bysebuho et Embedseek sont suivies vers leurs iframes lorsque celles-ci sont disponibles. Les pages Kakaflix testées le 16 août 2026 étaient toutefois supprimées ou en erreur Cloudflare ; leur prise en charge est donc présente mais ne peut pas être déclarée active pour ces identifiants précis.
+
+Les limites déjà observées restent valables : Fsvid peut renvoyer HTTP 403, Vidzy peut renvoyer `/troll/master.m3u8` ou une page Premium, et VidShareUp peut être indisponible par DNS. Ces cas sont filtrés ou retournent une liste vide plutôt qu’un faux flux. Les tests live ne garantissent pas la disponibilité permanente des hôtes tiers.

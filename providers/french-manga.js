@@ -22,7 +22,7 @@ function cards(html, base) {
   if (!out.length) { var sr = /search-item[\s\S]*?location\.href\s*=\s*'([^']+)'[\s\S]*?<img[\s\S]*?alt='([^']+)'/gi, sm; while ((sm = sr.exec(html || ''))) { var su = abs(sm[1], base), sc = String(html).slice(sm.index, sm.index + 700), si = sc.match(/<img[^>]*(?:src|data-src)=["']([^"']+)/i); out.push({ id: idOf(su) || su, title: clean(sm[2]).trim(), url: su, cover: si ? abs(si[1], base) : '', type: 'anime', sourceId: SOURCE_ID }); } }
   var seen = {}; return out.filter(function (x) { if (seen[x.url]) return false; seen[x.url] = true; return true; });
 }
-function getInfo() { return { name: 'French-Manga', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'anime', version: '1.0.5' }; }
+function getInfo() { return { name: 'French-Manga', lang: 'fr', baseUrl: SITE, logo: SITE + '/favicon.ico', type: 'anime', version: '1.0.6' }; }
 function search(query, page, opts) { if (!String(query || '').trim()) return Promise.resolve([]); return request('/engine/ajax/search.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: 'query=' + esc(query) + '&page=' + (page || 1) }).then(function (r) { if (!r) return []; var h = responseBody(r), list = cards(h, SITE); if (!list.length) return request('/index.php?do=search&subaction=search&story=' + esc(query), {}).then(function (r2) { return r2 ? cards(responseBody(r2), SITE) : []; }); return list; }); }
 function popular(opts) { var q = ['naruto', 'one piece', 'solo leveling']; return search(q[(opts && opts.dateRange || 0) % q.length], 1, opts); }
 function getHome(opts) { return popular({ dateRange: 1 }).then(function (items) { return [{ title: 'Anime populaires', items: items || [] }]; }); }
@@ -32,10 +32,21 @@ function parseEpisodeJson(data, pageUrl, fallbackTitle) { var out = []; Object.k
 function getDetail(url) { return request(url, {}).then(function (r) { if (!r) return null; var h = responseBody(r), d = detailData(h, url), id = idOf(url); return request('/engine/ajax/manga_episodes_api.php?id=' + esc(id), {}).then(function (er) { var data = er ? parseJson(er) : null, eps = data ? parseEpisodeJson(data, url, d.title) : []; return { id: id || url, title: d.title, url: url, cover: d.cover, description: d.description, year: d.year, genres: d.genres, type: /film/i.test(d.title) ? 'movie' : 'anime', sourceId: SOURCE_ID, episodes: eps }; }); }); }
 function getEpisodes(url) { return getDetail(url).then(function (d) { return d ? d.episodes || [] : []; }); }
 function unpackPacked(s) {
-  s = String(s || ''); var start = s.indexOf("}('"); var split = s.indexOf(".split('|')", start); if (start < 0 || split < 0) return s;
+  s = String(s || '');
+  function decode(payload, radix, dict) {
+    function rN(t) { var n = 0; for (var i = 0; i < t.length; i++) { var c = t.charCodeAt(i); n = n * radix + (c <= 57 ? c - 48 : c >= 97 ? c - 87 : c - 29); } return n; }
+    return payload.replace(/[0-9A-Za-z]+/g, function (k) { var i = rN(k); return i < dict.length && dict[i] !== '' ? dict[i] : k; });
+  }
+  var generic = s.match(/\}\(\s*'((?:\\.|[^'])*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'((?:\\.|[^'])*)'\.split\('\|'\)/);
+  if (generic) {
+    var gp = generic[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\\\');
+    var gd = generic[4].replace(/\\'/g, "'").replace(/\\\\/g, '\\\\').split('|');
+    return decode(gp, Number(generic[2]), gd);
+  }
+  var start = s.indexOf("}('"); var split = s.indexOf(".split('|')", start); if (start < 0 || split < 0) return s;
   var body = s.slice(start + 3, split).split(String.fromCharCode(92) + "'").join("'"), m = body.match(/,([0-9]+),([0-9]+),'([\s\S]*)'$/); if (!m) return s;
-  var payload = body.slice(0, m.index), radix = Number(m[1]), dict = m[3].split('|'); function rN(t) { var n = 0; for (var i = 0; i < t.length; i++) { var c = t.charCodeAt(i); n = n * radix + (c <= 57 ? c - 48 : c >= 97 ? c - 87 : c - 29); } return n; }
-  return payload.replace(/[0-9A-Za-z]+/g, function (k) { var i = rN(k); return i < dict.length && dict[i] !== '' ? dict[i] : k; });
+  var payload = body.slice(0, m.index), radix = Number(m[1]), dict = m[3].split('|');
+  return decode(payload, radix, dict);
 }
 function directVideo(u, ref) {
   function pick(text, source) {
@@ -51,20 +62,19 @@ function directVideo(u, ref) {
     if (stream.indexOf('.m3u8') < 0 && stream.indexOf('.mp4') < 0) return [];
     return [{ url: stream, quality: (stream.match(/(?:2160|1080|720|480|360)p?/i) || ['Unknown'])[0], container: stream.indexOf('.m3u8') >= 0 ? 'hls' : 'mp4', headers: { Referer: source || u, 'User-Agent': UA }, kind: 'sub' }];
   }
-  return fetch(u, { headers: { Referer: ref || SITE, 'User-Agent': UA }, timeoutMs: 20000 }).then(function (r) {
-    if (!r) return [];
-    return Promise.resolve(responseBody(r)).then(function (rawBody) {
-      var stream = pick(rawBody, u);
-      if (stream) return make(stream, u);
-      var redirect = rawBody.match(/window\.location\.(?:href|replace)\s*=?\s*\(?["']([^"']+)["']/i) || rawBody.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-      if (!redirect || !redirect[1]) return [];
-      var next = abs(redirect[1].replace(/\\\//g, '/'), u);
-      return fetch(next, { headers: { Referer: u, 'User-Agent': UA }, timeoutMs: 20000 }).then(function (r2) { return r2 ? make(pick(responseBody(r2), next), next) : []; }).catch(function () { return []; });
-    });
-  }).catch(function () { return []; });
+  function peel(html, source) {
+    var stream = pick(html, source);
+    if (stream) return Promise.resolve(make(stream, source));
+    var redirect = String(html || '').match(/window\.location\.(?:href|replace)\s*=?\s*\(?["']([^"']+)["']/i) || String(html || '').match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    if (!redirect || !redirect[1]) return Promise.resolve([]);
+    var next = abs(redirect[1].replace(/\\\//g, '/'), source || u);
+    if (!next || next === source) return Promise.resolve([]);
+    return resolveVideo(next, source || u);
+  }
+  return fetch(u, { headers: { Referer: ref || SITE, 'User-Agent': UA }, timeoutMs: 20000 }).then(function (r) { return r ? peel(responseBody(r), u) : []; }).catch(function () { return []; });
 }
 function param(raw, key) { var a = String(raw || '').split('|'); for (var i = 0; i < a.length; i++) if (a[i].indexOf(key + '=') === 0) return a[i].slice(key.length + 1); return ''; }
-function resolveVideo(u, page) { var x = String(u || ''), host = x.indexOf('://') >= 0 ? x.slice(x.indexOf('://') + 3).split('/')[0].toLowerCase().replace(/^www\./, '') : ''; if (/^(vidzy\.org|vidhsareup\.(?:fun|io)|vidstream\.pro|vidcdn\.|kakaflix\.|luluvdo\.com|lulustream\.com|luluvid\.com)$/.test(host)) return directVideo(u, page); return extractVideo(u, { headers: { Referer: page, 'User-Agent': UA } }).catch(function () { return []; }); }
+function resolveVideo(u, page) { var x = String(u || ''), host = x.indexOf('://') >= 0 ? x.slice(x.indexOf('://') + 3).split('/')[0].toLowerCase().replace(/^www\./, '') : ''; if (/^(vidzy\.org|vidhsareup\.(?:fun|io)|vidstream\.pro|vidcdn\.|kakaflix\.|uqload\.(?:is|com)|luluvdo\.com|lulustream\.com|luluvid\.com)$/.test(host)) return directVideo(u, page); return extractVideo(u, { headers: { Referer: page, 'User-Agent': UA } }).catch(function () { return []; }); }
 function getVideoSources(episodeUrl) {
   var raw = String(episodeUrl || ''), page = raw.split('|')[0], lang = param(raw, 'lang') || 'vf', ep = param(raw, 'e') || '1';
   return request('/engine/ajax/manga_episodes_api.php?id=' + esc(idOf(page)), {}).then(function (r) {
