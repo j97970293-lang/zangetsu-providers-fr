@@ -1,0 +1,10 @@
+import { loadProvider, loadExtractor, callProvider } from '../../zangetsu/js_harness/host.mjs';
+const names = ['doodstream','mp4upload','okru','streamlare','uqload','vidzy','fsvid','voe','vidoza','vidmoly','sendvid','myvi','sibnet','younetu','streamtape','kokoflix','luluvdo'];
+loadProvider('frenchstream', new URL('../providers/frenchstream.js', import.meta.url));
+loadProvider('french-manga', new URL('../providers/french-manga.js', import.meta.url));
+for (const n of names) loadExtractor(new URL(`../extractors/${n}.js`, import.meta.url));
+const parse = (s) => JSON.parse(s);
+const fs = parse(await callProvider('frenchstream', 'getVideoSources', ['https://french-stream.one/index.php?newsid=15134151|movie']));
+const fm = parse(await callProvider('french-manga', 'getVideoSources', ['https://w16.french-manga.net/index.php?newsid=1498810|s=1|e=1|lang=vostfr']));
+console.log(JSON.stringify({ frenchstream: fs.slice(0, 3).map((x) => ({ url: x.url, container: x.container })), frenchmanga: fm.slice(0, 3).map((x) => ({ url: x.url, container: x.container })) }, null, 2));
+if (!fs.length && !fm.length) process.exitCode = 1;
