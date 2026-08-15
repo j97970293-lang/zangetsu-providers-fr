@@ -18,7 +18,7 @@ test('manifest providers report French metadata', async () => {
   for (const id of ['frenchstream', 'french-manga', 'movix']) {
     const info = await call(id, 'getInfo', []);
     assert.equal(info.lang, 'fr');
-    assert.equal(info.version, '1.0.6');
+    assert.equal(info.version, '1.0.7');
     assert.ok(info.name && info.baseUrl);
   }
 });

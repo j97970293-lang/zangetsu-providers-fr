@@ -6,5 +6,7 @@ for (const n of names) loadExtractor(new URL(`../extractors/${n}.js`, import.met
 const parse = (s) => JSON.parse(s);
 const fs = parse(await callProvider('frenchstream', 'getVideoSources', ['https://french-stream.one/index.php?newsid=15134151|movie']));
 const fm = parse(await callProvider('french-manga', 'getVideoSources', ['https://w16.french-manga.net/index.php?newsid=1498810|s=1|e=1|lang=vostfr']));
-console.log(JSON.stringify({ frenchstream: fs.slice(0, 3).map((x) => ({ url: x.url, container: x.container })), frenchmanga: fm.slice(0, 3).map((x) => ({ url: x.url, container: x.container })) }, null, 2));
+console.log(JSON.stringify({ frenchstream: fs.slice(0, 3).map((x) => ({ url: x.url, quality: x.quality, label: x.label, container: x.container })), frenchmanga: fm.slice(0, 3).map((x) => ({ url: x.url, quality: x.quality, label: x.label, container: x.container })) }, null, 2));
+const all = fs.concat(fm);
 if (!fs.length && !fm.length) process.exitCode = 1;
+if (all.some((x) => !x.quality || /^unknown$/i.test(String(x.quality)) || !x.label || /unknown/i.test(String(x.label)))) process.exitCode = 1;

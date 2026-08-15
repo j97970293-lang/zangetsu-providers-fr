@@ -67,3 +67,14 @@ Les tests ciblés dans le harness du runtime Zangetsu ont ensuite produit les r�
 Le parser Movix descend désormais dans les tableaux et objets de `players`, puis les URLs Kakaflix, Bysebuho et Embedseek sont suivies vers leurs iframes lorsque celles-ci sont disponibles. Les pages Kakaflix testées le 16 août 2026 étaient toutefois supprimées ou en erreur Cloudflare ; leur prise en charge est donc présente mais ne peut pas être déclarée active pour ces identifiants précis.
 
 Les limites déjà observées restent valables : Fsvid peut renvoyer HTTP 403, Vidzy peut renvoyer `/troll/master.m3u8` ou une page Premium, et VidShareUp peut être indisponible par DNS. Ces cas sont filtrés ou retournent une liste vide plutôt qu’un faux flux. Les tests live ne garantissent pas la disponibilité permanente des hôtes tiers.
+
+
+## Retour utilisateur — lecteurs et qualité — 2026-08-16
+
+Le modèle `VideoSource` de Zangetsu affiche d’abord `label`, puis ajoute `quality`; si `quality` vaut littéralement `Unknown`, l’interface affiche ce texte. Les sources actuelles construisent `quality` uniquement à partir d’un motif `2160|1080|720|480|360` présent dans l’URL HLS finale. Les URLs signées Uqload et Luluvdo ne contiennent pas cette résolution, d’où `Unknown`.
+
+Les réponses French-Stream observées contiennent les groupes `premium`, `vidzy`, `uqload`, `dood`, `voe` et `filmoon`; chaque groupe contient des variantes `default`, `vostfr`, `vff` et `vfq`. La réponse Movix sauvegardée contient 17 lecteurs : Fsvid, Vidzy, Uqload, Kakaflix vers Dood/Voe/Filmoon et Mixdrop, tous avec `quality: "HD"` et un champ `player`. French-Manga One Piece expose Vidzy et Luluvdo/Luluvid ; certains épisodes exposent aussi VidShareUp.
+
+Le provider actuel perd ces métadonnées en réduisant les objets API à des chaînes URL. Le correctif doit transporter `server`, `lang` et `quality` jusqu’à la résolution, produire par exemple `label: "[VF] Uqload"` et `quality: "HD"`, et ne plus émettre `Unknown`. Les formats de parser de référence observés dans Gowaru gèrent `players`, `links`, `episodes[episode].languages`, les tableaux de langue et les champs `player`/`name`/`quality`.
+
+Références de code consultées : [Zangetsu VideoSource](https://github.com/Spyou/Zangetsu/blob/main/lib/core/models/video_source.dart), [Gowaru Frenchstream extractor](https://github.com/Gowaru/gowaru-nuvio-providers/blob/main/src/frenchstream/extractor.js), [Gowaru Movix extractor](https://github.com/Gowaru/gowaru-nuvio-providers/blob/main/src/movix/extractor.js), [French-Stream film API](https://french-stream.one/engine/ajax/film_api.php?id=15116633), [French-Manga episode API](https://w16.french-manga.net/engine/ajax/manga_episodes_api.php?id=1498700).
